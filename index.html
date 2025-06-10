@@ -47,27 +47,42 @@
     }
   </style>
 </head>
-<body>
 
-  <div class="login-box">
-    <h2>Group Login</h2>
-    <form id="loginForm">
-      <div class="mb-3">
-        <label for="groupName" class="form-label">Group Name</label>
-        <input type="text" class="form-control" id="groupName" placeholder="e.g. CollegeTrip2025" required>
-      </div>
+<body class="d-flex flex-column min-vh-100">
 
-      <div class="mb-3">
-        <label for="groupPassword" class="form-label">Group Password</label>
-        <input type="password" class="form-control" id="groupPassword" placeholder="Shared password" required>
-      </div>
+  <!-- Main content wrapper -->
+  <main class="flex-grow-1 d-flex justify-content-center align-items-center">
+    <div class="login-box">
+      <h2>Group Login</h2>
+      <form id="loginForm">
+        <div class="mb-3">
+          <label for="groupName" class="form-label">Group Name</label>
+          <input type="text" class="form-control" id="groupName" placeholder="e.g. CollegeTrip2025" required>
+        </div>
 
-      <button type="submit" class="btn btn-warning w-100">Login</button>
-    </form>
+        <div class="mb-3">
+          <label for="groupPassword" class="form-label">Group Password</label>
+          <input type="password" class="form-control" id="groupPassword" placeholder="Shared password" required>
+        </div>
 
-    <p class="mt-3 text-center">Don't have a group? <a href="create_group.html">Create one</a></p>
-  </div>
+        <button type="submit" class="btn btn-warning w-100">Login</button>
+      </form>
+
+      <p class="mt-3 text-center">Don't have a group? <a href="create_group.html">Create one</a></p>
+    </div>
+  </main>
+
+  <!-- Footer pinned to bottom -->
+  <footer class="text-center text-light py-3" style="font-size: 0.9rem;">
+    <hr class="border-light m-0">
+    <p class="mb-0">Designed and developed by <strong>A B Keshav Kumar</strong>, IIT Madras</p>
+  </footer>
 
   <script src="script/login.js"></script>
 </body>
+
+</html>
+
+</body>
+
 </html>
