@@ -52,25 +52,24 @@
 
         <div class="mb-3">
           <label for="members" class="form-label">Member Names (comma-separated)</label>
-          <input type="text" class="form-control" id="members" placeholder="e.g. Monkey, Donkey, Giraffe" required>
+          <input type="text" class="form-control" id="members" placeholder="e.g. Donkey, Monkey, Giraffe" required>
         </div>
 
         <div class="form-check mt-3">
-            <input class="form-check-input" type="checkbox" value="" id="dataLossConsent" required>
-            <label class="form-check-label" for="dataLossConsent">
-                I understand that if I forget the group name or password, my expense history cannot be recovered.
-            </label>
+          <input class="form-check-input" type="checkbox" id="dataLossConsent" required>
+          <label class="form-check-label" for="dataLossConsent">
+            I understand that if I forget the group name or password, my expense history cannot be recovered.
+          </label>
         </div>
+
         <div class="form-check mt-2">
-            <input class="form-check-input" type="checkbox" id="agreeTerms" required>
-            <label class="form-check-label" for="agreeTerms">
-                I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Terms and Conditions</a>
-            </label>
+          <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+          <label class="form-check-label" for="agreeTerms">
+            I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Terms and Conditions</a>
+          </label>
         </div>
 
-
-
-        <button type="submit" class="btn btn-warning w-100">Create Group</button>
+        <button type="submit" class="btn btn-warning w-100 mt-3">Create Group</button>
       </form>
     </div>
   </main>
@@ -80,34 +79,34 @@
     <p class="mb-0">Designed and developed by <strong>A B Keshav Kumar</strong>, IIT Madras</p>
   </footer>
 
-
   <!-- Terms & Conditions Modal -->
-<div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-scrollable">
-    <div class="modal-content text-dark">
-      <div class="modal-header">
-        <h5 class="modal-title" id="termsModalLabel">Terms and Conditions</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p><strong>Note:</strong> This app is designed for group-based expense tracking.</p>
-        <ul>
-          <li>This application is in its initial release (v1.0) and may exhibit occasional data loss or calculation inconsistencies.</li>
-          <li>The developer shall not be held responsible for any loss of data or financial misinterpretation arising from the use of this app.</li>
-          <li>Group details such as name and password must be remembered and stored safely by users. Recovery is not possible if lost.</li>
-          <li>All transactions are visible to group members and should be entered honestly and with consent.</li>
-          <li>Deletion of entries will be logged separately.</li>
-        </ul>
-        <p>By using this app, you agree to use it responsibly and acknowledge that data may be stored in Firebase.</p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+  <div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+      <div class="modal-content text-dark">
+        <div class="modal-header">
+          <h5 class="modal-title" id="termsModalLabel">Terms and Conditions</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p><strong>Note:</strong> This app is designed for group-based expense tracking.</p>
+          <ul>
+            <li>This application is in its initial release (v1.0) and may exhibit occasional data loss or calculation inconsistencies.</li>
+            <li>The developer shall not be held responsible for any loss of data or financial misinterpretation arising from the use of this app.</li>
+            <li>Group details such as name and password must be remembered and stored safely by users. Recovery is not possible if lost.</li>
+            <li>All transactions are visible to group members and should be entered honestly and with consent.</li>
+            <li>Deletion of entries will be logged separately.</li>
+          </ul>
+          <p>By using this app, you agree to use it responsibly and acknowledge that data may be stored in Firebase.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<!-- Firebase and group creation logic -->
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module" src="script/firebase-config.js"></script>
   <script type="module" src="script/create_group.js"></script>
 </body>

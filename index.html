@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Group Login - Expense Tracker</title>
+
+  <!-- Bootstrap CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+ <!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/11.9.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.9.0/firebase-analytics.js"></script>
+
+<!-- Firebase config file -->
+<script type="module" src="firebase-config.js"></script>
+
+
+  <style>
+    body {
+      background: linear-gradient(to right, #6dd5ed, #2193b0);
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .login-box {
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    a {
+      color: #ffd700;
+    }
+
+    a:hover {
+      color: #ffffff;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body class="d-flex flex-column min-vh-100">
+
+  <!-- Main content wrapper -->
+  <main class="flex-grow-1 d-flex justify-content-center align-items-center">
+    <div class="login-box">
+      <h2>Group Login</h2>
+      <form id="loginForm">
+        <div class="mb-3">
+          <label for="groupName" class="form-label">Group Name</label>
+          <input type="text" class="form-control" id="groupName" placeholder="e.g. CollegeTrip2025" required>
+        </div>
+
+        <div class="mb-3">
+          <label for="groupPassword" class="form-label">Group Password</label>
+          <input type="password" class="form-control" id="groupPassword" placeholder="Shared password" required>
+        </div>
+
+        <button type="submit" class="btn btn-warning w-100">Login</button>
+      </form>
+
+      <p class="mt-3 text-center">Don't have a group? <a href="create_group.html">Create one</a></p>
+    </div>
+  </main>
+
+  <!-- Footer pinned to bottom -->
+  <footer class="text-center text-light py-3" style="font-size: 0.9rem;">
+    <hr class="border-light m-0">
+    <p class="mb-0">Designed and developed by <strong>A B Keshav Kumar</strong>, IIT Madras</p>
+  </footer>
+
+  <script src="script/login.js"></script>
+</body>
+
+</html>
+
+</body>
+
+</html>

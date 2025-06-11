@@ -1,6 +1,6 @@
 // create_group.js
 
-import { db } from './firebase.js';
+import { db } from './firebase-config.js';
 import { doc, setDoc } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-firestore.js";
 
 document.getElementById('createGroupForm').addEventListener('submit', async (e) => {
@@ -10,8 +10,8 @@ document.getElementById('createGroupForm').addEventListener('submit', async (e) 
   const groupPassword = document.getElementById('groupPassword').value.trim();
   const membersInput = document.getElementById('members').value.trim();
 
-  const dataLossCheck = document.getElementById('dataLossCheck').checked;
-  const termsCheck = document.getElementById('termsCheck').checked;
+  const dataLossCheck = document.getElementById('dataLossConsent').checked;
+  const termsCheck = document.getElementById('agreeTerms').checked;
 
   if (!dataLossCheck || !termsCheck) {
     alert("Please agree to both checkboxes before proceeding.");
@@ -46,8 +46,8 @@ document.getElementById('createGroupForm').addEventListener('submit', async (e) 
       });
     }
 
-    // Initialize delete log
-    await setDoc(doc(db, `groups/${groupName}`, "deleteLog"), {
+    // Initialize delete log in a subcollection "logs"
+    await setDoc(doc(db, `groups/${groupName}/logs`, "deleteLog"), {
       entries: []
     });
 
