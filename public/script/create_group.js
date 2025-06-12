@@ -1,7 +1,5 @@
-// create_group.js
-
 import { db } from './firebase-config.js';
-import { doc, setDoc } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-firestore.js";
+import { doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-firestore.js";
 
 document.getElementById('createGroupForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -29,14 +27,23 @@ document.getElementById('createGroupForm').addEventListener('submit', async (e) 
   }
 
   try {
+    // Check if group already exists
+    const groupRef = doc(db, "groups", groupName);
+    const groupSnap = await getDoc(groupRef);
+
+    if (groupSnap.exists()) {
+      alert("Group name already exists. Please choose a different name.");
+      return;
+    }
+
     // Save main group data
-    await setDoc(doc(db, "groups", groupName), {
+    await setDoc(groupRef, {
       password: groupPassword,
       members: members,
       createdAt: new Date().toISOString()
     });
 
-    // Initialize data for each member
+    // Initialize member data
     for (const member of members) {
       await setDoc(doc(db, `groups/${groupName}/members`, member), {
         amountOwed: 0,
@@ -46,8 +53,8 @@ document.getElementById('createGroupForm').addEventListener('submit', async (e) 
       });
     }
 
-    // Initialize delete log in a subcollection "logs"
-    await setDoc(doc(db, `groups/${groupName}/logs`, "deleteLog"), {
+    // Proper delete log document path
+    await setDoc(doc(db, `groups/${groupName}/deleteLogs`, "info"), {
       entries: []
     });
 
