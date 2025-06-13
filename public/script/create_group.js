@@ -27,7 +27,6 @@ document.getElementById('createGroupForm').addEventListener('submit', async (e) 
   }
 
   try {
-    // Check if group already exists
     const groupRef = doc(db, "groups", groupName);
     const groupSnap = await getDoc(groupRef);
 
@@ -36,33 +35,45 @@ document.getElementById('createGroupForm').addEventListener('submit', async (e) 
       return;
     }
 
-    // Save main group data
+    // 1. Create main group doc
     await setDoc(groupRef, {
       password: groupPassword,
       members: members,
       createdAt: new Date().toISOString()
     });
+    console.log("Group document created.");
 
-    // Initialize member data
+    // 2. Create members
     for (const member of members) {
-      await setDoc(doc(db, `groups/${groupName}/members`, member), {
-        amountOwed: 0,
-        amountToGet: 0,
-        transactions: [],
-        completedPayments: []
-      });
+      try {
+        await setDoc(doc(db, `groups/${groupName}/members`, member), {
+          amountOwed: 0,
+          amountToGet: 0,
+          transactions: [],
+          completedPayments: []
+        });
+        console.log(`Created data for member: ${member}`);
+      } catch (memberErr) {
+        console.error(`Error saving member ${member}:`, memberErr);
+      }
     }
 
-    // Proper delete log document path
-    await setDoc(doc(db, `groups/${groupName}/deleteLogs`, "info"), {
-      entries: []
-    });
+    // 3. Initialize deleteLogs
+    try {
+      await setDoc(doc(db, `groups/${groupName}/deleteLogs`, "info"), {
+        entries: []
+      });
+      console.log("Delete log initialized.");
+    } catch (logErr) {
+      console.warn("Could not initialize delete log:", logErr);
+    }
 
+    // ✅ Success
     alert(`Group "${groupName}" created successfully!`);
     window.location.href = "index.html";
 
   } catch (error) {
-    console.error("Error creating group:", error);
+    console.error("Error during group creation:", error);
     alert("An error occurred while creating the group. Please try again.");
   }
 });

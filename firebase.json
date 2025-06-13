@@ -8,7 +8,7 @@
     ],
     "headers": [
       {
-        "source": "**/*.js",
+        "source": "/**/*.js",
         "headers": [
           {
             "key": "Content-Type",
@@ -16,6 +16,7 @@
           }
         ]
       }
-    ]
+    ],
+    "cleanUrls": true
   }
 }
