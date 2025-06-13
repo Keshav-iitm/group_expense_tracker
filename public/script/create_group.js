@@ -7,6 +7,7 @@ document.getElementById('createGroupForm').addEventListener('submit', async (e) 
   const groupName = document.getElementById('groupName').value.trim();
   const groupPassword = document.getElementById('groupPassword').value.trim();
   const membersInput = document.getElementById('members').value.trim();
+  const loadingNotice = document.getElementById('loadingNotice');
 
   const dataLossCheck = document.getElementById('dataLossConsent').checked;
   const termsCheck = document.getElementById('agreeTerms').checked;
@@ -26,12 +27,15 @@ document.getElementById('createGroupForm').addEventListener('submit', async (e) 
     return;
   }
 
+  loadingNotice.style.display = "block"; // Show "please wait..."
+
   try {
     const groupRef = doc(db, "groups", groupName);
     const groupSnap = await getDoc(groupRef);
 
     if (groupSnap.exists()) {
       alert("Group name already exists. Please choose a different name.");
+      loadingNotice.style.display = "none";
       return;
     }
 
@@ -75,5 +79,6 @@ document.getElementById('createGroupForm').addEventListener('submit', async (e) 
   } catch (error) {
     console.error("Error during group creation:", error);
     alert("An error occurred while creating the group. Please try again.");
+    loadingNotice.style.display = "none"; // Hide on error
   }
 });

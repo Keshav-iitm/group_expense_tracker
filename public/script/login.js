@@ -6,37 +6,38 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
 
   const groupName = document.getElementById("groupName").value.trim();
   const groupPassword = document.getElementById("groupPassword").value.trim();
+  const loadingNotice = document.getElementById("loadingNotice");
 
   if (!groupName || !groupPassword) {
     alert("Please enter both group name and password.");
     return;
   }
 
+  loadingNotice.style.display = "block"; // Show loading message
+
   try {
-    // Reference to the group document by groupName as the document ID
     const groupRef = doc(db, "groups", groupName);
     const groupSnap = await getDoc(groupRef);
 
     if (!groupSnap.exists()) {
       alert("Group does not exist. Please check the name or create a new group.");
+      loadingNotice.style.display = "none";
       return;
     }
 
     const data = groupSnap.data();
 
-    // Password check
     if (data.password !== groupPassword) {
       alert("Incorrect password. Please try again.");
+      loadingNotice.style.display = "none";
       return;
     }
 
-    // Save current group info in localStorage for session persistence
     localStorage.setItem("currentGroup", groupName);
-
-    // Redirect to dashboard
     window.location.href = "dashboard.html";
   } catch (error) {
     console.error("Login error:", error);
     alert("An error occurred while logging in. Please try again.");
+    loadingNotice.style.display = "none"; // ✅ Fix: hide it here too
   }
 });

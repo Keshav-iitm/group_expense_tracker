@@ -11,8 +11,10 @@
       font-family: 'Segoe UI', sans-serif;
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
+      padding: 20px;
     }
 
     .group-box {
@@ -32,50 +34,63 @@
     .form-label {
       color: #fff;
     }
+
+    #loadingNotice {
+      text-align: center;
+      margin-top: 15px;
+      font-size: 0.95rem;
+      color: #ffd700;
+      display: none;
+    }
+
+    footer {
+      margin-top: 25px;
+      font-size: 0.9rem;
+      color: #eee;
+    }
   </style>
 </head>
-<body class="d-flex flex-column min-vh-100">
+<body>
 
-  <main class="flex-grow-1 d-flex justify-content-center align-items-center">
-    <div class="group-box">
-      <h2>Create Group</h2>
-      <form id="createGroupForm">
-        <div class="mb-3">
-          <label for="groupName" class="form-label">Create Group Name</label>
-          <input type="text" class="form-control" id="groupName" required>
-        </div>
+  <div class="group-box">
+    <h2>Create Group</h2>
+    <form id="createGroupForm">
+      <div class="mb-3">
+        <label for="groupName" class="form-label">Create Group Name</label>
+        <input type="text" class="form-control" id="groupName" required>
+      </div>
 
-        <div class="mb-3">
-          <label for="groupPassword" class="form-label">Create Group Password</label>
-          <input type="password" class="form-control" id="groupPassword" required>
-        </div>
+      <div class="mb-3">
+        <label for="groupPassword" class="form-label">Create Group Password</label>
+        <input type="password" class="form-control" id="groupPassword" required>
+      </div>
 
-        <div class="mb-3">
-          <label for="members" class="form-label">Member Names (comma-separated)</label>
-          <input type="text" class="form-control" id="members" placeholder="e.g. Donkey, Monkey, Giraffe" required>
-        </div>
+      <div class="mb-3">
+        <label for="members" class="form-label">Member Names (comma-separated)</label>
+        <input type="text" class="form-control" id="members" placeholder="e.g. Donkey, Monkey, Giraffe" required>
+      </div>
 
-        <div class="form-check mt-3">
-          <input class="form-check-input" type="checkbox" id="dataLossConsent" required>
-          <label class="form-check-label" for="dataLossConsent">
-            I understand that if I forget the group name or password, my expense history cannot be recovered.
-          </label>
-        </div>
+      <div class="form-check mt-3">
+        <input class="form-check-input" type="checkbox" id="dataLossConsent" required>
+        <label class="form-check-label" for="dataLossConsent">
+          I understand that if I forget the group name or password, my expense history cannot be recovered.
+        </label>
+      </div>
 
-        <div class="form-check mt-2">
-          <input class="form-check-input" type="checkbox" id="agreeTerms" required>
-          <label class="form-check-label" for="agreeTerms">
-            I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Terms and Conditions</a>
-          </label>
-        </div>
+      <div class="form-check mt-2">
+        <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+        <label class="form-check-label" for="agreeTerms">
+          I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Terms and Conditions</a>
+        </label>
+      </div>
 
-        <button type="submit" class="btn btn-warning w-100 mt-3">Create Group</button>
-      </form>
-    </div>
-  </main>
+      <button type="submit" class="btn btn-warning w-100 mt-3">Create Group</button>
+    </form>
+    <p id="loadingNotice">Creating group... Please wait.</p>
+  </div>
 
-  <footer class="text-center text-light py-3" style="font-size: 0.9rem;">
-    <hr class="border-light m-0">
+  <footer class="text-center">
+    <hr class="border-light my-3">
     <p class="mb-0">Designed and developed by <strong>A B Keshav Kumar</strong>, IIT Madras</p>
   </footer>
 
