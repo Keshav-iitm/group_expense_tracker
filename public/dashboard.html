@@ -109,63 +109,15 @@
         <h5>Member History</h5>
         <div id="balanceSummary" class="row mb-3"></div>
 
-        <!-- Balances Section -->
-        <div class="card mb-4">
-          <div class="card-body">
-            <h5>Member Balances</h5>
-            <div id="balanceSummary" class="row"></div>
-          </div>
-        </div>
-
-        <!-- Paid/Revert Interaction Placeholder -->
+        <!-- Settlement Section -->
         <div class="table-container mb-3">
           <table class="table table-bordered table-sm">
             <thead class="table-light">
               <tr><th>Receiver</th><th>From</th><th>Amount</th><th>Status</th><th>Action</th></tr>
             </thead>
-            <tbody id="getTableBody"></tbody>
+            <tbody id="settlementTableBody"></tbody>
           </table>
         </div>
-
-        <div class="table-container">
-          <table class="table table-bordered table-sm">
-            <thead class="table-light">
-              <tr><th>Ower</th><th>Owed To</th><th>Amount</th></tr>
-            </thead>
-            <tbody id="oweTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Edit/Delete Expenses -->
-    <div class="card mb-4">
-      <div class="card-body">
-        <h5>Edit or Delete Expense</h5>
-
-        <form id="editExpenseForm" class="row g-2 mb-3">
-          <div class="col-md-4">
-            <input type="text" id="editExpenseId" class="form-control" placeholder="Expense ID to edit" required>
-          </div>
-          <div class="col-md-4">
-            <input type="text" id="editReason" class="form-control" placeholder="New reason (optional)">
-          </div>
-          <div class="col-md-4">
-            <button class="btn btn-warning w-100" type="submit">Edit Expense</button>
-          </div>
-        </form>
-
-        <form id="deleteExpenseForm" class="row g-2">
-          <div class="col-md-4">
-            <input type="text" id="expenseIdToDelete" class="form-control" placeholder="Expense ID to delete" required>
-          </div>
-          <div class="col-md-4">
-            <input type="text" id="deleteReason" class="form-control" placeholder="Reason for deletion" required>
-          </div>
-          <div class="col-md-4">
-            <button class="btn btn-danger w-100" type="submit">Delete Expense</button>
-          </div>
-        </form>
       </div>
     </div>
 

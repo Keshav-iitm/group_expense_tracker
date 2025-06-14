@@ -1,251 +1,215 @@
 import { db } from './firebase-config.js';
 import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  deleteDoc,
-  updateDoc
-} from "https://www.gstatic.com/firebasejs/11.9.0/firebase-firestore.js";
+  collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, Timestamp
+} from 'https://www.gstatic.com/firebasejs/11.9.0/firebase-firestore.js';
 
-// Check current group
-let currentGroup = localStorage.getItem("currentGroup");
+// 1. Initial group check
+const currentGroup = localStorage.getItem("currentGroup");
 if (!currentGroup) {
   alert("No group found. Please login again.");
   window.location.href = "index.html";
 }
 
-// Display group name
-const groupTitle = document.createElement("h4");
-groupTitle.className = "text-center text-primary";
-groupTitle.textContent = `Group: ${currentGroup}`;
-document.querySelector(".container").prepend(groupTitle);
-
+// 2. Global state
 let membersList = [];
+document.getElementById("groupNameHeader").textContent = currentGroup;
 
-// ✅ Load members into both select boxes
-async function loadGroupMembers(groupName) {
-  const membersRef = collection(db, "groups", groupName, "members");
-  const membersSnap = await getDocs(membersRef);
-
+// 3. Load members into dropdowns
+async function loadGroupMembers() {
   membersList = [];
-
+  const memberDocs = await getDocs(collection(db, "groups", currentGroup, "members"));
   const involvedSelect = document.getElementById("involvedMembersSelect");
-  const contributorsSelect = document.getElementById("contributorsSelect");
-
-  if (!involvedSelect || !contributorsSelect) {
-    console.error("Missing select boxes. Check HTML IDs.");
-    return;
-  }
+  const payersSelect = document.getElementById("contributorsSelect");
 
   involvedSelect.innerHTML = "";
-  contributorsSelect.innerHTML = "";
+  payersSelect.innerHTML = "";
 
-  membersSnap.forEach(docSnap => {
-    const member = docSnap.id;
-    membersList.push(member);
+  memberDocs.forEach(docSnap => {
+    const name = docSnap.id;
+    membersList.push(name);
 
-    const option1 = document.createElement("option");
-    option1.value = member;
-    option1.textContent = member;
-    involvedSelect.appendChild(option1);
-
-    const option2 = document.createElement("option");
-    option2.value = member;
-    option2.textContent = member;
-    contributorsSelect.appendChild(option2);
+    [involvedSelect, payersSelect].forEach(select => {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
   });
+
+  involvedSelect.size = membersList.length;
+  involvedSelect.multiple = true;
+  payersSelect.size = membersList.length;
+  payersSelect.multiple = true;
 }
 
-// ✅ Select All functionality
+// 4. Select all toggle
 document.getElementById("selectAllMembers").addEventListener("change", function () {
   const options = document.getElementById("involvedMembersSelect").options;
-  for (let option of options) {
-    option.selected = this.checked;
+  for (let opt of options) {
+    opt.selected = this.checked;
   }
 });
 
-// ✅ On load
-window.onload = async () => {
-  await loadGroupMembers(currentGroup);
-  await loadExpenseLogs();
-  await loadDeleteLogs();
+// 5. Add member
+document.getElementById("addMemberForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.getElementById("newMemberName").value.trim();
+  if (!name) return;
+
+  const ref = doc(db, "groups", currentGroup, "members", name);
+  await setDoc(ref, { amountOwed: 0, amountToGet: 0 });
+
+  document.getElementById("newMemberName").value = "";
+  await loadGroupMembers();
   await updateBalances();
-  await updateTables();
-};
+  await updateSettlementTable();
+});
 
-// ✅ Generate ID: 2 letters + 3 digits
-function generateExpenseID() {
-  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const digits = Math.floor(100 + Math.random() * 900);
-  const chars = letters.charAt(Math.floor(Math.random() * 26)) + letters.charAt(Math.floor(Math.random() * 26));
-  return chars + digits;
-}
-
-// ✅ Add Expense
+// 6. Add expense
 document.getElementById("addExpenseForm").addEventListener("submit", async (e) => {
   e.preventDefault();
+  const payers = [...document.getElementById("contributorsSelect").selectedOptions].map(opt => opt.value);
+  const involved = [...document.getElementById("involvedMembersSelect").selectedOptions].map(opt => opt.value);
+  const amount = parseFloat(document.getElementById("amount").value);
+  const reason = document.getElementById("expenseReason").value;
 
-  const contributorsSelect = document.getElementById("contributorsSelect");
-  const involvedSelect = document.getElementById("involvedMembersSelect");
-  const amount = parseFloat(document.getElementById("amount").value.trim());
+  if (!payers.length || !involved.length || isNaN(amount) || amount <= 0) return alert("Invalid input");
 
-  const payers = Array.from(contributorsSelect.selectedOptions).map(opt => opt.value);
-  const involved = Array.from(involvedSelect.selectedOptions).map(opt => opt.value);
+  const perHead = amount / involved.length;
+  const perPayer = amount / payers.length;
+  const expenseId = `EX${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-  if (payers.length === 0 || involved.length === 0 || isNaN(amount)) {
-    alert("Please fill all fields and select at least one payer and involved member.");
-    return;
-  }
-
-  const expenseID = generateExpenseID();
-  const date = new Date().toISOString();
-  const eachOwes = amount / involved.length;
-  const eachPayerPays = amount / payers.length;
-
-  const logRef = doc(db, `groups/${currentGroup}/expenses`, expenseID);
-  await setDoc(logRef, {
-    payers,
-    amount,
-    involved,
-    date
+  // Log expense
+  await setDoc(doc(db, "groups", currentGroup, "expenses", expenseId), {
+    payers, involved, amount, reason, date: Date.now()
   });
 
-  for (const member of membersList) {
-    const memberRef = doc(db, `groups/${currentGroup}/members`, member);
-    const memberSnap = await getDoc(memberRef);
-    if (!memberSnap.exists()) continue;
-
-    const data = memberSnap.data();
-    let owed = 0;
-    let toGet = 0;
-
-    if (involved.includes(member)) owed += eachOwes;
-    if (payers.includes(member)) toGet += eachPayerPays;
-
-    await updateDoc(memberRef, {
-      amountOwed: (data.amountOwed || 0) + owed,
-      amountToGet: (data.amountToGet || 0) + toGet
+  // Update balances
+  for (let name of involved) {
+    const ref = doc(db, "groups", currentGroup, "members", name);
+    await updateDoc(ref, {
+      amountOwed: (await getDoc(ref)).data().amountOwed + perHead
     });
   }
 
-  alert("Expense added successfully.");
-  window.location.reload();
+  for (let name of payers) {
+    const ref = doc(db, "groups", currentGroup, "members", name);
+    await updateDoc(ref, {
+      amountToGet: (await getDoc(ref)).data().amountToGet + perPayer
+    });
+  }
+
+  document.getElementById("addExpenseForm").reset();
+  await loadExpenseLogs();
+  await updateBalances();
+  await updateSettlementTable();
 });
 
-// ✅ Expense Logs
-async function loadExpenseLogs() {
-  const logsRef = collection(db, `groups/${currentGroup}/expenses`);
-  const logsSnap = await getDocs(logsRef);
-  const logBody = document.getElementById("expenseLogBody");
-  logBody.innerHTML = "";
-
-  let total = 0;
-  logsSnap.forEach(docSnap => {
-    const { payers, amount, involved, date } = docSnap.data();
-    total += parseFloat(amount);
-    logBody.innerHTML += `<tr>
-      <td>${docSnap.id}</td>
-      <td>${Array.isArray(payers) ? payers.join(", ") : payers}</td>
-      <td>₹${amount}</td>
-      <td>${involved.join(", ")}</td>
-      <td>${new Date(date).toLocaleString()}</td>
-    </tr>`;
-  });
-
-  document.getElementById("totalAmount").textContent = `₹${total.toFixed(2)}`;
-}
-
-// ✅ Delete Logs
-async function loadDeleteLogs() {
-  const logRef = doc(db, `groups/${currentGroup}/deleteLogs`, "info");
-  const logSnap = await getDoc(logRef);
-  const deleteLogBody = document.getElementById("deleteLogBody");
-  deleteLogBody.innerHTML = "";
-  const entries = logSnap.exists() ? (logSnap.data().entries || []) : [];
-
-  entries.forEach(entry => {
-    deleteLogBody.innerHTML += `<tr>
-      <td>${entry.id}</td>
-      <td>${entry.deletedBy}</td>
-      <td>${entry.reason}</td>
-      <td>${new Date(entry.date).toLocaleString()}</td>
-    </tr>`;
-  });
-}
-
-// ✅ Balances Summary
+// 7. Balances display
 async function updateBalances() {
-  const summaryDiv = document.getElementById("balanceSummary");
-  summaryDiv.innerHTML = "";
+  const div = document.getElementById("balanceSummary");
+  div.innerHTML = "";
 
-  for (const member of membersList) {
-    const ref = doc(db, `groups/${currentGroup}/members`, member);
-    const snap = await getDoc(ref);
-    if (snap.exists()) {
-      const data = snap.data();
-      const net = (data.amountToGet || 0) - (data.amountOwed || 0);
-      const color = net >= 0 ? "text-success" : "text-danger";
-      summaryDiv.innerHTML += `<div class='col-md-4'><p><strong>${member}</strong>: <span class='${color}'>₹${net.toFixed(2)}</span></p></div>`;
-    }
+  for (const m of membersList) {
+    const snap = await getDoc(doc(db, "groups", currentGroup, "members", m));
+    const data = snap.data();
+    const net = (data.amountToGet || 0) - (data.amountOwed || 0);
+    const color = net >= 0 ? "text-success" : "text-danger";
+
+    div.innerHTML += `<div class="col-md-4"><p><strong>${m}</strong>: <span class="${color}">₹${net.toFixed(2)}</span></p></div>`;
   }
 }
 
-// ✅ Owe & Get Tables
-async function updateTables() {
-  const oweBody = document.getElementById("oweTableBody");
-  const getBody = document.getElementById("getTableBody");
-  oweBody.innerHTML = getBody.innerHTML = "";
+// 8. Settlement table
+async function updateSettlementTable() {
+  const table = document.getElementById("settlementTableBody");
+  table.innerHTML = "";
 
-  for (const from of membersList) {
-    const fromRef = doc(db, `groups/${currentGroup}/members`, from);
-    const fromSnap = await getDoc(fromRef);
-    if (!fromSnap.exists()) continue;
-    const fromData = fromSnap.data();
-
-    for (const to of membersList) {
+  for (let from of membersList) {
+    for (let to of membersList) {
       if (from === to) continue;
-      const toRef = doc(db, `groups/${currentGroup}/members`, to);
-      const toSnap = await getDoc(toRef);
-      if (!toSnap.exists()) continue;
+
+      const fromSnap = await getDoc(doc(db, "groups", currentGroup, "members", from));
+      const toSnap = await getDoc(doc(db, "groups", currentGroup, "members", to));
+      const fromData = fromSnap.data();
       const toData = toSnap.data();
 
-      const owed = Math.min((fromData.amountOwed || 0), (toData.amountToGet || 0)) / (membersList.length - 1);
-      if (owed > 0.01) {
-        oweBody.innerHTML += `<tr><td>${from}</td><td>${to}</td><td>₹${owed.toFixed(2)}</td></tr>`;
-        getBody.innerHTML += `<tr><td>${to}</td><td>${from}</td><td>₹${owed.toFixed(2)}</td></tr>`;
+      const amount = Math.min((fromData.amountOwed || 0), (toData.amountToGet || 0));
+      if (amount > 0.01) {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${to}</td>
+          <td>${from}</td>
+          <td>₹${amount.toFixed(2)}</td>
+          <td class="status">Unpaid</td>
+          <td><button class="btn btn-sm btn-success">Paid</button></td>
+        `;
+        row.querySelector("button").addEventListener("click", async () => {
+          await updateDoc(doc(db, "groups", currentGroup, "members", from), {
+            amountOwed: fromData.amountOwed - amount
+          });
+          await updateDoc(doc(db, "groups", currentGroup, "members", to), {
+            amountToGet: toData.amountToGet - amount
+          });
+          row.classList.add("highlight-paid");
+          row.querySelector(".status").textContent = "Paid";
+          await updateBalances();
+        });
+        table.appendChild(row);
       }
     }
   }
 }
 
-// ✅ Delete Expense
-document.getElementById("deleteExpenseForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
+// 9. Expense log
+async function loadExpenseLogs() {
+  const ref = collection(db, "groups", currentGroup, "expenses");
+  const snap = await getDocs(ref);
+  const body = document.getElementById("expenseLogBody");
+  body.innerHTML = "";
+  let total = 0;
 
-  const id = document.getElementById("expenseIdToDelete").value.trim();
-  const reason = document.getElementById("deleteReason").value.trim();
+  snap.forEach(docSnap => {
+    const { payers, amount, involved, reason, date } = docSnap.data();
+    total += parseFloat(amount);
+    body.innerHTML += `
+      <tr>
+        <td>${docSnap.id}</td>
+        <td>${payers.join(', ')}</td>
+        <td>₹${amount}</td>
+        <td>${involved.join(', ')}</td>
+        <td>${reason}</td>
+        <td>${new Date(date).toLocaleString()}</td>
+      </tr>`;
+  });
 
-  if (!id || !reason) {
-    alert("Please enter both ID and reason.");
-    return;
-  }
+  document.getElementById("totalAmount").textContent = `₹${total.toFixed(2)}`;
+}
 
-  try {
-    await deleteDoc(doc(db, `groups/${currentGroup}/expenses`, id));
+// 10. Delete log
+async function loadDeleteLogs() {
+  const ref = doc(db, "groups", currentGroup, "deleteLogs", "info");
+  const snap = await getDoc(ref);
+  const body = document.getElementById("deleteLogBody");
+  body.innerHTML = "";
 
-    const logRef = doc(db, `groups/${currentGroup}/deleteLogs`, "info");
-    const logSnap = await getDoc(logRef);
-    let entries = logSnap.exists() ? (logSnap.data().entries || []) : [];
+  const logs = snap.exists() ? (snap.data().entries || []) : [];
+  logs.forEach(log => {
+    body.innerHTML += `
+      <tr>
+        <td>${log.id}</td>
+        <td>${log.reason}</td>
+        <td>${log.deletedBy}</td>
+        <td>${new Date(log.date).toLocaleString()}</td>
+      </tr>`;
+  });
+}
 
-    entries.push({ id, reason, deletedBy: "Admin", date: new Date().toISOString() });
-    await updateDoc(logRef, { entries });
-
-    alert("Expense deleted and logged.");
-    window.location.reload();
-  } catch (err) {
-    console.error("Delete error:", err);
-    alert("Error deleting expense. Please check ID or try again.");
-  }
+// 11. Initial load
+window.addEventListener("DOMContentLoaded", async () => {
+  await loadGroupMembers();
+  await loadExpenseLogs();
+  await loadDeleteLogs();
+  await updateBalances();
+  await updateSettlementTable();
 });
