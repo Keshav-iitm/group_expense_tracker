@@ -8,7 +8,6 @@
     body {
       background: #f0f2f5;
       font-family: 'Segoe UI', sans-serif;
-      min-height: 100vh;
     }
     .table-container {
       max-height: 250px;
@@ -18,61 +17,85 @@
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
       border-radius: 12px;
     }
+    .group-header {
+      font-size: 1.7rem;
+      color: #ffc107;
+      font-weight: bold;
+    }
+    .highlight-paid {
+      background-color: #d4edda !important;
+    }
   </style>
 </head>
 <body>
-  <!-- Top Navbar with Group Name and Logout -->
+  <!-- Navbar -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
     <div class="container-fluid">
-      <span class="navbar-brand" id="groupNameHeader">Group Expense Tracker</span>
+      <span class="navbar-brand group-header" id="groupNameHeader">GroupName</span>
       <button class="btn btn-outline-warning" onclick="location.href='index.html'">Logout</button>
     </div>
   </nav>
 
-  <div class="container py-4">
-    <h2 class="text-center mb-4">Group Dashboard</h2>
+  <div class="container py-3">
 
     <!-- Add Expense Section -->
     <div class="card mb-4">
       <div class="card-body">
-        <h5>Add Expense</h5>
+        <h5 class="text-primary">Add Expense</h5>
         <form id="addExpenseForm">
-          <div class="row g-2">
-            <div class="col-md-4">
-              <input type="text" id="payer" class="form-control" placeholder="Paid by (name)" required>
-            </div>
-            <div class="col-md-2">
-              <input type="number" id="amount" class="form-control" placeholder="Amount" required>
+          <div class="row g-2 mb-2">
+            <div class="col-md-6">
+              <label class="form-label">Payers</label>
+              <select multiple class="form-select" id="contributorsSelect" required></select>
             </div>
             <div class="col-md-6">
+              <label class="form-label">Involved in this payment</label>
               <select multiple class="form-select" id="involvedMembersSelect" required></select>
-              <div class="form-check mt-2">
+              <div class="form-check mt-1">
                 <input class="form-check-input" type="checkbox" id="selectAllMembers">
-                <label class="form-check-label" for="selectAllMembers">Select All</label>
+                <label class="form-check-label">Select All Involved</label>
               </div>
             </div>
           </div>
-          <button class="btn btn-success mt-3 w-100">Add Expense</button>
+          <div class="row g-2 mb-2">
+            <div class="col-md-6">
+              <label class="form-label">Reason</label>
+              <input type="text" id="expenseReason" class="form-control" placeholder="e.g. Dinner, cab..." required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Amount</label>
+              <input type="number" id="amount" class="form-control" placeholder="₹" required>
+            </div>
+          </div>
+          <div class="d-flex justify-content-between">
+            <button class="btn btn-success mt-2">Add Expense</button>
+            <button class="btn btn-secondary mt-2" type="button" data-bs-toggle="modal" data-bs-target="#addMemberModal">Manage Members</button>
+          </div>
         </form>
       </div>
     </div>
 
-    <!-- Expense Log Section -->
-    <div class="card mb-4">
-      <div class="card-body">
-        <h5>Expense Logs</h5>
-        <div class="table-container">
-          <table class="table table-bordered table-sm">
-            <thead class="table-light">
-              <tr><th>Expense ID</th><th>Payer</th><th>Amount</th><th>Involved</th><th>Date</th></tr>
-            </thead>
-            <tbody id="expenseLogBody"></tbody>
-          </table>
+    <!-- Manage Members Modal -->
+    <div class="modal fade" id="addMemberModal" tabindex="-1" aria-labelledby="addMemberModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form id="addMemberForm">
+            <div class="modal-header">
+              <h5 class="modal-title" id="addMemberModalLabel">Add New Group Member</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <input type="text" id="newMemberName" class="form-control" placeholder="Enter member name" required>
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-primary">Add Member</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
 
-    <!-- Total Amount Section -->
+    <!-- Total Amount -->
     <div class="card mb-4">
       <div class="card-body">
         <h5>Total Group Expense</h5>
@@ -80,30 +103,30 @@
       </div>
     </div>
 
-    <!-- Delete Expense Section -->
+    <!-- Member History -->
     <div class="card mb-4">
       <div class="card-body">
-        <h5>Delete Expense</h5>
-        <form id="deleteExpenseForm">
-          <input type="text" id="expenseIdToDelete" class="form-control mb-2" placeholder="Enter Expense ID" required>
-          <input type="text" id="deleteReason" class="form-control mb-2" placeholder="Reason for deletion" required>
-          <button class="btn btn-danger w-100">Delete Expense</button>
-        </form>
-      </div>
-    </div>
+        <h5>Member History</h5>
+        <div id="balanceSummary" class="row mb-3"></div>
 
-    <!-- Balances Section -->
-    <div class="card mb-4">
-      <div class="card-body">
-        <h5>Member Balances</h5>
-        <div id="balanceSummary" class="row"></div>
-      </div>
-    </div>
+        <!-- Balances Section -->
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5>Member Balances</h5>
+            <div id="balanceSummary" class="row"></div>
+          </div>
+        </div>
 
-    <!-- Owe Table -->
-    <div class="card mb-4">
-      <div class="card-body">
-        <h5>Who Owes Whom</h5>
+        <!-- Paid/Revert Interaction Placeholder -->
+        <div class="table-container mb-3">
+          <table class="table table-bordered table-sm">
+            <thead class="table-light">
+              <tr><th>Receiver</th><th>From</th><th>Amount</th><th>Status</th><th>Action</th></tr>
+            </thead>
+            <tbody id="getTableBody"></tbody>
+          </table>
+        </div>
+
         <div class="table-container">
           <table class="table table-bordered table-sm">
             <thead class="table-light">
@@ -115,44 +138,76 @@
       </div>
     </div>
 
-    <!-- To-Get Table -->
+    <!-- Edit/Delete Expenses -->
     <div class="card mb-4">
       <div class="card-body">
-        <h5>Who Gets From Whom</h5>
+        <h5>Edit or Delete Expense</h5>
+
+        <form id="editExpenseForm" class="row g-2 mb-3">
+          <div class="col-md-4">
+            <input type="text" id="editExpenseId" class="form-control" placeholder="Expense ID to edit" required>
+          </div>
+          <div class="col-md-4">
+            <input type="text" id="editReason" class="form-control" placeholder="New reason (optional)">
+          </div>
+          <div class="col-md-4">
+            <button class="btn btn-warning w-100" type="submit">Edit Expense</button>
+          </div>
+        </form>
+
+        <form id="deleteExpenseForm" class="row g-2">
+          <div class="col-md-4">
+            <input type="text" id="expenseIdToDelete" class="form-control" placeholder="Expense ID to delete" required>
+          </div>
+          <div class="col-md-4">
+            <input type="text" id="deleteReason" class="form-control" placeholder="Reason for deletion" required>
+          </div>
+          <div class="col-md-4">
+            <button class="btn btn-danger w-100" type="submit">Delete Expense</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Expense Logs -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5>Expense Logs</h5>
         <div class="table-container">
           <table class="table table-bordered table-sm">
             <thead class="table-light">
-              <tr><th>Receiver</th><th>From</th><th>Amount</th></tr>
+              <tr><th>Expense ID</th><th>Payers</th><th>Amount</th><th>Involved</th><th>Reason</th><th>Date</th></tr>
             </thead>
-            <tbody id="getTableBody"></tbody>
+            <tbody id="expenseLogBody"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- Delete Log Section -->
+    <!-- Deleted Logs -->
     <div class="card mb-4">
       <div class="card-body">
         <h5>Deleted Logs</h5>
         <div class="table-container">
           <table class="table table-bordered table-sm">
             <thead class="table-light">
-              <tr><th>ID</th><th>Deleted By</th><th>Reason</th><th>Date</th></tr>
+              <tr><th>ID</th><th>Reason</th><th>Details</th><th>Date</th></tr>
             </thead>
             <tbody id="deleteLogBody"></tbody>
           </table>
         </div>
       </div>
     </div>
+
   </div>
 
   <!-- Footer -->
-<footer class="text-center text-dark py-3" style="font-size: 0.9rem;">
-  <hr class="border-dark m-0">
-  <p class="mb-0">Designed and developed by <strong>A B Keshav Kumar</strong>, IIT Madras</p>
-</footer>
+  <footer class="text-center text-dark py-3" style="font-size: 0.9rem;">
+    <hr class="border-dark m-0">
+    <p class="mb-0">Designed and developed by <strong>A B Keshav Kumar</strong>, IIT Madras</p>
+  </footer>
 
-
+  <!-- Scripts -->
   <script type="module" src="script/firebase-config.js"></script>
   <script type="module" src="script/dashboard.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

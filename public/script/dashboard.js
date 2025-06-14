@@ -1,4 +1,3 @@
-// dashboard.js
 import { db } from './firebase-config.js';
 import {
   collection,
@@ -10,13 +9,14 @@ import {
   updateDoc
 } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-firestore.js";
 
+// Check current group
 let currentGroup = localStorage.getItem("currentGroup");
 if (!currentGroup) {
   alert("No group found. Please login again.");
   window.location.href = "index.html";
 }
 
-// Display group name on top
+// Display group name
 const groupTitle = document.createElement("h4");
 groupTitle.className = "text-center text-primary";
 groupTitle.textContent = `Group: ${currentGroup}`;
@@ -24,17 +24,23 @@ document.querySelector(".container").prepend(groupTitle);
 
 let membersList = [];
 
-// Load group members into the select list
+// ✅ Load members into both select boxes
 async function loadGroupMembers(groupName) {
   const membersRef = collection(db, "groups", groupName, "members");
   const membersSnap = await getDocs(membersRef);
 
   membersList = [];
-  const select = document.getElementById("involvedMembersSelect");
-  const payerSelect = document.getElementById("payer");
 
-  select.innerHTML = "";
-  payerSelect.innerHTML = "";
+  const involvedSelect = document.getElementById("involvedMembersSelect");
+  const contributorsSelect = document.getElementById("contributorsSelect");
+
+  if (!involvedSelect || !contributorsSelect) {
+    console.error("Missing select boxes. Check HTML IDs.");
+    return;
+  }
+
+  involvedSelect.innerHTML = "";
+  contributorsSelect.innerHTML = "";
 
   membersSnap.forEach(docSnap => {
     const member = docSnap.id;
@@ -43,16 +49,16 @@ async function loadGroupMembers(groupName) {
     const option1 = document.createElement("option");
     option1.value = member;
     option1.textContent = member;
-    select.appendChild(option1);
+    involvedSelect.appendChild(option1);
 
     const option2 = document.createElement("option");
     option2.value = member;
     option2.textContent = member;
-    payerSelect.appendChild(option2);
+    contributorsSelect.appendChild(option2);
   });
 }
 
-// Select all checkbox logic
+// ✅ Select All functionality
 document.getElementById("selectAllMembers").addEventListener("change", function () {
   const options = document.getElementById("involvedMembersSelect").options;
   for (let option of options) {
@@ -60,7 +66,7 @@ document.getElementById("selectAllMembers").addEventListener("change", function 
   }
 });
 
-// Load members and logs on start
+// ✅ On load
 window.onload = async () => {
   await loadGroupMembers(currentGroup);
   await loadExpenseLogs();
@@ -69,7 +75,7 @@ window.onload = async () => {
   await updateTables();
 };
 
-// Generate 5-character ID: 2 letters + 3 digits
+// ✅ Generate ID: 2 letters + 3 digits
 function generateExpenseID() {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const digits = Math.floor(100 + Math.random() * 900);
@@ -77,52 +83,58 @@ function generateExpenseID() {
   return chars + digits;
 }
 
-// Add expense logic
+// ✅ Add Expense
 document.getElementById("addExpenseForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  const payer = document.getElementById("payer").value.trim();
-  const amount = parseFloat(document.getElementById("amount").value.trim());
+  const contributorsSelect = document.getElementById("contributorsSelect");
   const involvedSelect = document.getElementById("involvedMembersSelect");
-  const involved = Array.from(involvedSelect.selectedOptions).map(option => option.value);
+  const amount = parseFloat(document.getElementById("amount").value.trim());
 
-  if (!payer || isNaN(amount) || involved.length === 0) {
-    alert("Please fill all fields and select at least one involved member.");
+  const payers = Array.from(contributorsSelect.selectedOptions).map(opt => opt.value);
+  const involved = Array.from(involvedSelect.selectedOptions).map(opt => opt.value);
+
+  if (payers.length === 0 || involved.length === 0 || isNaN(amount)) {
+    alert("Please fill all fields and select at least one payer and involved member.");
     return;
   }
 
   const expenseID = generateExpenseID();
   const date = new Date().toISOString();
-  const eachShare = amount / involved.length;
+  const eachOwes = amount / involved.length;
+  const eachPayerPays = amount / payers.length;
 
   const logRef = doc(db, `groups/${currentGroup}/expenses`, expenseID);
   await setDoc(logRef, {
-    payer,
+    payers,
     amount,
     involved,
     date
   });
 
-  for (const member of involved) {
+  for (const member of membersList) {
     const memberRef = doc(db, `groups/${currentGroup}/members`, member);
     const memberSnap = await getDoc(memberRef);
-    if (memberSnap.exists()) {
-      const data = memberSnap.data();
-      const owed = member === payer ? 0 : eachShare;
-      const toGet = member === payer ? amount - eachShare : 0;
+    if (!memberSnap.exists()) continue;
 
-      await updateDoc(memberRef, {
-        amountOwed: (data.amountOwed || 0) + owed,
-        amountToGet: (data.amountToGet || 0) + toGet
-      });
-    }
+    const data = memberSnap.data();
+    let owed = 0;
+    let toGet = 0;
+
+    if (involved.includes(member)) owed += eachOwes;
+    if (payers.includes(member)) toGet += eachPayerPays;
+
+    await updateDoc(memberRef, {
+      amountOwed: (data.amountOwed || 0) + owed,
+      amountToGet: (data.amountToGet || 0) + toGet
+    });
   }
 
   alert("Expense added successfully.");
   window.location.reload();
 });
 
-// Load expense logs
+// ✅ Expense Logs
 async function loadExpenseLogs() {
   const logsRef = collection(db, `groups/${currentGroup}/expenses`);
   const logsSnap = await getDocs(logsRef);
@@ -131,15 +143,21 @@ async function loadExpenseLogs() {
 
   let total = 0;
   logsSnap.forEach(docSnap => {
-    const { payer, amount, involved, date } = docSnap.data();
+    const { payers, amount, involved, date } = docSnap.data();
     total += parseFloat(amount);
-    logBody.innerHTML += `<tr><td>${docSnap.id}</td><td>${payer}</td><td>₹${amount}</td><td>${involved.join(", ")}</td><td>${new Date(date).toLocaleString()}</td></tr>`;
+    logBody.innerHTML += `<tr>
+      <td>${docSnap.id}</td>
+      <td>${Array.isArray(payers) ? payers.join(", ") : payers}</td>
+      <td>₹${amount}</td>
+      <td>${involved.join(", ")}</td>
+      <td>${new Date(date).toLocaleString()}</td>
+    </tr>`;
   });
 
   document.getElementById("totalAmount").textContent = `₹${total.toFixed(2)}`;
 }
 
-// Load delete logs
+// ✅ Delete Logs
 async function loadDeleteLogs() {
   const logRef = doc(db, `groups/${currentGroup}/deleteLogs`, "info");
   const logSnap = await getDoc(logRef);
@@ -148,14 +166,20 @@ async function loadDeleteLogs() {
   const entries = logSnap.exists() ? (logSnap.data().entries || []) : [];
 
   entries.forEach(entry => {
-    deleteLogBody.innerHTML += `<tr><td>${entry.id}</td><td>${entry.deletedBy}</td><td>${entry.reason}</td><td>${new Date(entry.date).toLocaleString()}</td></tr>`;
+    deleteLogBody.innerHTML += `<tr>
+      <td>${entry.id}</td>
+      <td>${entry.deletedBy}</td>
+      <td>${entry.reason}</td>
+      <td>${new Date(entry.date).toLocaleString()}</td>
+    </tr>`;
   });
 }
 
-// Update balances
+// ✅ Balances Summary
 async function updateBalances() {
   const summaryDiv = document.getElementById("balanceSummary");
   summaryDiv.innerHTML = "";
+
   for (const member of membersList) {
     const ref = doc(db, `groups/${currentGroup}/members`, member);
     const snap = await getDoc(ref);
@@ -168,7 +192,7 @@ async function updateBalances() {
   }
 }
 
-// Update owe/get tables
+// ✅ Owe & Get Tables
 async function updateTables() {
   const oweBody = document.getElementById("oweTableBody");
   const getBody = document.getElementById("getTableBody");
@@ -185,8 +209,8 @@ async function updateTables() {
       const toRef = doc(db, `groups/${currentGroup}/members`, to);
       const toSnap = await getDoc(toRef);
       if (!toSnap.exists()) continue;
-
       const toData = toSnap.data();
+
       const owed = Math.min((fromData.amountOwed || 0), (toData.amountToGet || 0)) / (membersList.length - 1);
       if (owed > 0.01) {
         oweBody.innerHTML += `<tr><td>${from}</td><td>${to}</td><td>₹${owed.toFixed(2)}</td></tr>`;
@@ -196,7 +220,7 @@ async function updateTables() {
   }
 }
 
-// Delete expense logic
+// ✅ Delete Expense
 document.getElementById("deleteExpenseForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
