@@ -67,6 +67,7 @@
               <input type="number" id="amount" class="form-control" placeholder="₹" required>
             </div>
           </div>
+          <p id="statusDisplay" class="text-primary fw-bold mt-1"></p>
           <div class="d-flex justify-content-between">
             <button class="btn btn-success mt-2">Add Expense</button>
             <button class="btn btn-secondary mt-2" type="button" data-bs-toggle="modal" data-bs-target="#addMemberModal">Manage Members</button>
@@ -113,7 +114,7 @@
         <div class="table-container mb-3">
           <table class="table table-bordered table-sm">
             <thead class="table-light">
-              <tr><th>Receiver</th><th>From</th><th>Amount</th><th>Status</th><th>Action</th></tr>
+              <tr><th>Expense ID</th><th>To</th><th>From</th><th>Amount</th><th>Status</th><th>Action</th></tr>
             </thead>
             <tbody id="settlementTableBody"></tbody>
           </table>
@@ -128,7 +129,7 @@
         <div class="table-container">
           <table class="table table-bordered table-sm">
             <thead class="table-light">
-              <tr><th>Expense ID</th><th>Payers</th><th>Amount</th><th>Involved</th><th>Reason</th><th>Date</th></tr>
+              <tr><th>Expense ID</th><th>Payers</th><th>Amount</th><th>Involved</th><th>Reason</th><th>Date</th><th>Action</th></tr>
             </thead>
             <tbody id="expenseLogBody"></tbody>
           </table>
@@ -143,7 +144,7 @@
         <div class="table-container">
           <table class="table table-bordered table-sm">
             <thead class="table-light">
-              <tr><th>ID</th><th>Reason</th><th>Details</th><th>Date</th></tr>
+              <tr><th>ID</th><th>Reason</th><th>Deleted By</th><th>Date</th></tr>
             </thead>
             <tbody id="deleteLogBody"></tbody>
           </table>

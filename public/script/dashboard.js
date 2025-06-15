@@ -62,19 +62,22 @@ document.getElementById("addMemberForm").addEventListener("submit", async (e) =>
 
 document.getElementById("addExpenseForm").addEventListener("submit", async (e) => {
   e.preventDefault();
+
   const payers = [...document.getElementById("contributorsSelect").selectedOptions].map(opt => opt.value);
   const involved = [...document.getElementById("involvedMembersSelect").selectedOptions].map(opt => opt.value);
   const amount = parseFloat(document.getElementById("amount").value);
   const reason = document.getElementById("expenseReason").value;
+  const statusDisplay = document.getElementById("statusDisplay");
 
   if (!payers.length || !involved.length || isNaN(amount) || amount <= 0) return alert("Invalid input");
 
+  statusDisplay.textContent = "Adding...";
+
   const perHead = amount / involved.length;
-  const perPayer = amount / payers.length;
   const expenseId = `EX${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
   await setDoc(doc(db, "groups", currentGroup, "expenses", expenseId), {
-    payers, involved, amount, reason, date: Date.now()
+    payers, involved, amount, reason, date: Date.now(), settled: []
   });
 
   for (let name of involved) {
@@ -89,11 +92,13 @@ document.getElementById("addExpenseForm").addEventListener("submit", async (e) =
     const ref = doc(db, "groups", currentGroup, "members", name);
     const snap = await getDoc(ref);
     await updateDoc(ref, {
-      amountToGet: (snap.data().amountToGet || 0) + amount
+      amountToGet: (snap.data().amountToGet || 0) + (amount / payers.length)
     });
   }
 
   document.getElementById("addExpenseForm").reset();
+  statusDisplay.textContent = "Added!";
+
   await loadExpenseLogs();
   await updateBalances();
   await updateSettlementTable();
@@ -113,25 +118,26 @@ async function updateBalances() {
   }
 }
 
-const paidSet = new Set();
-
 async function updateSettlementTable() {
   const table = document.getElementById("settlementTableBody");
   table.innerHTML = "";
 
-  for (let from of membersList) {
-    for (let to of membersList) {
-      if (from === to) continue;
+  const expensesSnap = await getDocs(collection(db, "groups", currentGroup, "expenses"));
 
-      const fromSnap = await getDoc(doc(db, "groups", currentGroup, "members", from));
-      const toSnap = await getDoc(doc(db, "groups", currentGroup, "members", to));
-      const fromData = fromSnap.data();
-      const toData = toSnap.data();
+  for (const docSnap of expensesSnap.docs) {
+    const expense = docSnap.data();
+    const expenseId = docSnap.id;
+    const perHead = expense.amount / expense.involved.length;
 
-      const amount = Math.min((fromData.amountOwed || 0), (toData.amountToGet || 0));
-      if (amount > 0.01) {
+    for (const from of expense.involved) {
+      if (expense.payers.includes(from)) continue;
+      for (const to of expense.payers) {
+        const amount = perHead;
+        const key = `${expenseId}_${from}_${to}`;
+
         const row = document.createElement("tr");
         row.innerHTML = `
+          <td>${expenseId}</td>
           <td>${to}</td>
           <td>${from}</td>
           <td>₹${amount.toFixed(2)}</td>
@@ -139,42 +145,54 @@ async function updateSettlementTable() {
           <td><button class="btn btn-sm btn-success">Paid</button></td>
         `;
 
-        const button = row.querySelector("button");
+        const statusCell = row.querySelector(".status");
+        const btn = row.querySelector("button");
 
-        button.addEventListener("click", async () => {
-          const key = `${from}->${to}`;
+        const paidKey = `${expenseId}_${from}_${to}`;
+        const isPaid = expense.settled?.includes(paidKey);
+        if (isPaid) {
+          row.classList.add("highlight-paid");
+          statusCell.textContent = "Paid";
+          btn.textContent = "Revoke";
+          btn.classList.remove("btn-success");
+          btn.classList.add("btn-warning");
+        }
 
-          if (!paidSet.has(key)) {
-            if (!confirm(`Are you sure ${from} has paid ₹${amount.toFixed(2)} to ${to}?`)) return;
+        btn.addEventListener("click", async () => {
+          const confirmText = btn.textContent === "Paid"
+            ? "Are you sure you have paid this amount?"
+            : "Are you sure you want to revoke the payment? This should only be done if you selected 'Paid' by mistake or returned the amount.";
 
-            await updateDoc(doc(db, "groups", currentGroup, "members", from), {
-              amountOwed: fromData.amountOwed - amount
-            });
-            await updateDoc(doc(db, "groups", currentGroup, "members", to), {
-              amountToGet: toData.amountToGet - amount
-            });
+          if (!confirm(confirmText)) return;
 
-            paidSet.add(key);
-            row.querySelector(".status").textContent = "Paid";
-            row.classList.add("highlight-paid");
-            button.textContent = "Revoke";
-            button.classList.replace("btn-success", "btn-warning");
-            await updateBalances();
+          const fromRef = doc(db, "groups", currentGroup, "members", from);
+          const toRef = doc(db, "groups", currentGroup, "members", to);
+          const fromSnap = await getDoc(fromRef);
+          const toSnap = await getDoc(toRef);
+
+          const fromData = fromSnap.data();
+          const toData = toSnap.data();
+
+          const paidKey = `${expenseId}_${from}_${to}`;
+          const newSettled = expense.settled || [];
+
+          if (btn.textContent === "Paid") {
+            await updateDoc(fromRef, { amountOwed: (fromData.amountOwed || 0) - amount });
+            await updateDoc(toRef, { amountToGet: (toData.amountToGet || 0) - amount });
+            newSettled.push(paidKey);
           } else {
-            await updateDoc(doc(db, "groups", currentGroup, "members", from), {
-              amountOwed: fromData.amountOwed + amount
-            });
-            await updateDoc(doc(db, "groups", currentGroup, "members", to), {
-              amountToGet: toData.amountToGet + amount
-            });
-
-            paidSet.delete(key);
-            row.querySelector(".status").textContent = "Unpaid";
-            row.classList.remove("highlight-paid");
-            button.textContent = "Paid";
-            button.classList.replace("btn-warning", "btn-success");
-            await updateBalances();
+            await updateDoc(fromRef, { amountOwed: (fromData.amountOwed || 0) + amount });
+            await updateDoc(toRef, { amountToGet: (toData.amountToGet || 0) + amount });
+            const idx = newSettled.indexOf(paidKey);
+            if (idx > -1) newSettled.splice(idx, 1);
           }
+
+          await updateDoc(doc(db, "groups", currentGroup, "expenses", expenseId), {
+            settled: newSettled
+          });
+
+          await updateBalances();
+          await updateSettlementTable();
         });
 
         table.appendChild(row);
@@ -201,54 +219,82 @@ async function loadExpenseLogs() {
         <td>${involved.join(', ')}</td>
         <td>${reason}</td>
         <td>${new Date(date).toLocaleString()}</td>
-        <td><button class="btn btn-sm btn-danger" onclick="deleteExpense('${docSnap.id}', ${amount}, ${JSON.stringify(payers)}, ${JSON.stringify(involved)})">Delete</button></td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteExpense('${docSnap.id}', ${amount})">Delete</button></td>
       </tr>`;
   });
 
   document.getElementById("totalAmount").textContent = `₹${total.toFixed(2)}`;
 }
 
-window.deleteExpense = async (id, amount, payers, involved) => {
-  if (!confirm("Are you sure you want to delete this expense?")) return;
+window.deleteExpense = async function (id, amount) {
+  const expenseRef = doc(db, "groups", currentGroup, "expenses", id);
+  const expenseSnap = await getDoc(expenseRef);
+  if (!expenseSnap.exists()) return;
 
-  const perHead = amount / involved.length;
-  for (let name of involved) {
+  const expense = expenseSnap.data();
+
+  if ((expense.settled || []).length > 0) {
+    alert("This expense has already been partially settled. Please revoke payments before deletion.");
+    return;
+  }
+
+  if (!confirm("Are you sure you want to delete this log? It will be excluded from all calculations and cannot be restored.")) return;
+
+  const perHead = expense.amount / expense.involved.length;
+  for (const name of expense.involved) {
     const ref = doc(db, "groups", currentGroup, "members", name);
     const snap = await getDoc(ref);
     await updateDoc(ref, {
-      amountOwed: snap.data().amountOwed - perHead
+      amountOwed: (snap.data().amountOwed || 0) - perHead
     });
   }
-
-  for (let name of payers) {
+  for (const name of expense.payers) {
     const ref = doc(db, "groups", currentGroup, "members", name);
     const snap = await getDoc(ref);
     await updateDoc(ref, {
-      amountToGet: snap.data().amountToGet - amount
+      amountToGet: (snap.data().amountToGet || 0) - (expense.amount / expense.payers.length)
     });
   }
 
-  await deleteDoc(doc(db, "groups", currentGroup, "expenses", id));
+  await deleteDoc(expenseRef);
+
+  const deleteLogRef = doc(db, "groups", currentGroup, "deleteLogs", "info");
+  const logSnap = await getDoc(deleteLogRef);
+  const entries = logSnap.exists() ? logSnap.data().entries || [] : [];
+  entries.push({
+    id,
+    reason: "Deleted by user",
+    deletedBy: "system",
+    date: Date.now()
+  });
+  await setDoc(deleteLogRef, { entries });
+
   await loadExpenseLogs();
   await updateBalances();
   await updateSettlementTable();
 };
 
 async function loadDeleteLogs() {
-  const ref = doc(db, "groups", currentGroup, "deleteLogs", "info");
-  const snap = await getDoc(ref);
+  const deleteLogRef = doc(db, "groups", currentGroup, "deleteLogs", "info");
+  const logSnap = await getDoc(deleteLogRef);
   const body = document.getElementById("deleteLogBody");
+  if (!body) return;
+
   body.innerHTML = "";
 
-  const logs = snap.exists() ? (snap.data().entries || []) : [];
-  logs.forEach(log => {
+  if (!logSnap.exists()) return;
+
+  const entries = logSnap.data().entries || [];
+
+  entries.forEach(log => {
     body.innerHTML += `
       <tr>
         <td>${log.id}</td>
         <td>${log.reason}</td>
         <td>${log.deletedBy}</td>
         <td>${new Date(log.date).toLocaleString()}</td>
-      </tr>`;
+      </tr>
+    `;
   });
 }
 
