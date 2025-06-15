@@ -51,8 +51,14 @@ document.getElementById("addMemberForm").addEventListener("submit", async (e) =>
   const name = document.getElementById("newMemberName").value.trim();
   if (!name) return;
 
-  const ref = doc(db, "groups", currentGroup, "members", name);
-  await setDoc(ref, { amountOwed: 0, amountToGet: 0 });
+  const existingRef = doc(db, "groups", currentGroup, "members", name);
+  const existingSnap = await getDoc(existingRef);
+  if (existingSnap.exists()) {
+    alert("A member with this name already exists.");
+    return;
+  }
+
+  await setDoc(existingRef, { amountOwed: 0, amountToGet: 0 });
 
   document.getElementById("newMemberName").value = "";
   await loadGroupMembers();
@@ -148,8 +154,7 @@ async function updateSettlementTable() {
         const statusCell = row.querySelector(".status");
         const btn = row.querySelector("button");
 
-        const paidKey = `${expenseId}_${from}_${to}`;
-        const isPaid = expense.settled?.includes(paidKey);
+        const isPaid = expense.settled?.includes(key);
         if (isPaid) {
           row.classList.add("highlight-paid");
           statusCell.textContent = "Paid";
@@ -263,10 +268,11 @@ window.deleteExpense = async function (id, amount) {
   const entries = logSnap.exists() ? logSnap.data().entries || [] : [];
   entries.push({
     id,
-    reason: "Deleted by user",
-    deletedBy: "system",
+    reason: expense.reason,
+    amount: expense.amount,
     date: Date.now()
   });
+
   await setDoc(deleteLogRef, { entries });
 
   await loadExpenseLogs();
@@ -290,8 +296,8 @@ async function loadDeleteLogs() {
     body.innerHTML += `
       <tr>
         <td>${log.id}</td>
-        <td>${log.reason}</td>
-        <td>${log.deletedBy}</td>
+        <td>${log.reason || 'N/A'}</td>
+        <td>₹${log.amount?.toFixed(2) || '0.00'}</td>
         <td>${new Date(log.date).toLocaleString()}</td>
       </tr>
     `;
