@@ -3,18 +3,15 @@ import {
   collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, Timestamp
 } from 'https://www.gstatic.com/firebasejs/11.9.0/firebase-firestore.js';
 
-// 1. Initial group check
 const currentGroup = localStorage.getItem("currentGroup");
 if (!currentGroup) {
   alert("No group found. Please login again.");
   window.location.href = "index.html";
 }
 
-// 2. Global state
 let membersList = [];
 document.getElementById("groupNameHeader").textContent = currentGroup;
 
-// 3. Load members into dropdowns
 async function loadGroupMembers() {
   membersList = [];
   const memberDocs = await getDocs(collection(db, "groups", currentGroup, "members"));
@@ -42,7 +39,6 @@ async function loadGroupMembers() {
   payersSelect.multiple = true;
 }
 
-// 4. Select all toggle
 document.getElementById("selectAllMembers").addEventListener("change", function () {
   const options = document.getElementById("involvedMembersSelect").options;
   for (let opt of options) {
@@ -50,7 +46,6 @@ document.getElementById("selectAllMembers").addEventListener("change", function 
   }
 });
 
-// 5. Add member
 document.getElementById("addMemberForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const name = document.getElementById("newMemberName").value.trim();
@@ -65,7 +60,6 @@ document.getElementById("addMemberForm").addEventListener("submit", async (e) =>
   await updateSettlementTable();
 });
 
-// 6. Add expense
 document.getElementById("addExpenseForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const payers = [...document.getElementById("contributorsSelect").selectedOptions].map(opt => opt.value);
@@ -79,23 +73,23 @@ document.getElementById("addExpenseForm").addEventListener("submit", async (e) =
   const perPayer = amount / payers.length;
   const expenseId = `EX${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-  // Log expense
   await setDoc(doc(db, "groups", currentGroup, "expenses", expenseId), {
     payers, involved, amount, reason, date: Date.now()
   });
 
-  // Update balances
   for (let name of involved) {
     const ref = doc(db, "groups", currentGroup, "members", name);
+    const snap = await getDoc(ref);
     await updateDoc(ref, {
-      amountOwed: (await getDoc(ref)).data().amountOwed + perHead
+      amountOwed: (snap.data().amountOwed || 0) + perHead
     });
   }
 
   for (let name of payers) {
     const ref = doc(db, "groups", currentGroup, "members", name);
+    const snap = await getDoc(ref);
     await updateDoc(ref, {
-      amountToGet: (await getDoc(ref)).data().amountToGet + perPayer
+      amountToGet: (snap.data().amountToGet || 0) + amount
     });
   }
 
@@ -105,7 +99,6 @@ document.getElementById("addExpenseForm").addEventListener("submit", async (e) =
   await updateSettlementTable();
 });
 
-// 7. Balances display
 async function updateBalances() {
   const div = document.getElementById("balanceSummary");
   div.innerHTML = "";
@@ -120,7 +113,8 @@ async function updateBalances() {
   }
 }
 
-// 8. Settlement table
+const paidSet = new Set();
+
 async function updateSettlementTable() {
   const table = document.getElementById("settlementTableBody");
   table.innerHTML = "";
@@ -144,24 +138,51 @@ async function updateSettlementTable() {
           <td class="status">Unpaid</td>
           <td><button class="btn btn-sm btn-success">Paid</button></td>
         `;
-        row.querySelector("button").addEventListener("click", async () => {
-          await updateDoc(doc(db, "groups", currentGroup, "members", from), {
-            amountOwed: fromData.amountOwed - amount
-          });
-          await updateDoc(doc(db, "groups", currentGroup, "members", to), {
-            amountToGet: toData.amountToGet - amount
-          });
-          row.classList.add("highlight-paid");
-          row.querySelector(".status").textContent = "Paid";
-          await updateBalances();
+
+        const button = row.querySelector("button");
+
+        button.addEventListener("click", async () => {
+          const key = `${from}->${to}`;
+
+          if (!paidSet.has(key)) {
+            if (!confirm(`Are you sure ${from} has paid ₹${amount.toFixed(2)} to ${to}?`)) return;
+
+            await updateDoc(doc(db, "groups", currentGroup, "members", from), {
+              amountOwed: fromData.amountOwed - amount
+            });
+            await updateDoc(doc(db, "groups", currentGroup, "members", to), {
+              amountToGet: toData.amountToGet - amount
+            });
+
+            paidSet.add(key);
+            row.querySelector(".status").textContent = "Paid";
+            row.classList.add("highlight-paid");
+            button.textContent = "Revoke";
+            button.classList.replace("btn-success", "btn-warning");
+            await updateBalances();
+          } else {
+            await updateDoc(doc(db, "groups", currentGroup, "members", from), {
+              amountOwed: fromData.amountOwed + amount
+            });
+            await updateDoc(doc(db, "groups", currentGroup, "members", to), {
+              amountToGet: toData.amountToGet + amount
+            });
+
+            paidSet.delete(key);
+            row.querySelector(".status").textContent = "Unpaid";
+            row.classList.remove("highlight-paid");
+            button.textContent = "Paid";
+            button.classList.replace("btn-warning", "btn-success");
+            await updateBalances();
+          }
         });
+
         table.appendChild(row);
       }
     }
   }
 }
 
-// 9. Expense log
 async function loadExpenseLogs() {
   const ref = collection(db, "groups", currentGroup, "expenses");
   const snap = await getDocs(ref);
@@ -180,13 +201,39 @@ async function loadExpenseLogs() {
         <td>${involved.join(', ')}</td>
         <td>${reason}</td>
         <td>${new Date(date).toLocaleString()}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteExpense('${docSnap.id}', ${amount}, ${JSON.stringify(payers)}, ${JSON.stringify(involved)})">Delete</button></td>
       </tr>`;
   });
 
   document.getElementById("totalAmount").textContent = `₹${total.toFixed(2)}`;
 }
 
-// 10. Delete log
+window.deleteExpense = async (id, amount, payers, involved) => {
+  if (!confirm("Are you sure you want to delete this expense?")) return;
+
+  const perHead = amount / involved.length;
+  for (let name of involved) {
+    const ref = doc(db, "groups", currentGroup, "members", name);
+    const snap = await getDoc(ref);
+    await updateDoc(ref, {
+      amountOwed: snap.data().amountOwed - perHead
+    });
+  }
+
+  for (let name of payers) {
+    const ref = doc(db, "groups", currentGroup, "members", name);
+    const snap = await getDoc(ref);
+    await updateDoc(ref, {
+      amountToGet: snap.data().amountToGet - amount
+    });
+  }
+
+  await deleteDoc(doc(db, "groups", currentGroup, "expenses", id));
+  await loadExpenseLogs();
+  await updateBalances();
+  await updateSettlementTable();
+};
+
 async function loadDeleteLogs() {
   const ref = doc(db, "groups", currentGroup, "deleteLogs", "info");
   const snap = await getDoc(ref);
@@ -205,7 +252,6 @@ async function loadDeleteLogs() {
   });
 }
 
-// 11. Initial load
 window.addEventListener("DOMContentLoaded", async () => {
   await loadGroupMembers();
   await loadExpenseLogs();
